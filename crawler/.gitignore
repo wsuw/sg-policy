@@ -1,0 +1,7 @@
+# 忽略爬取生成的数据文件
+data/documents/*
+!data/documents/.gitkeep
+data/metadata/*
+!data/metadata/.gitkeep
+__pycache__/
+*.pyc

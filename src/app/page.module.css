@@ -1,0 +1,32 @@
+.layout {
+  display: block;
+  min-height: 100vh;
+  min-height: 100svh;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+}
+
+.mainPanel {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
+  height: 100dvh;
+  overflow: auto;
+}
+
+/*
+  Mobile (≤768px): the drawer is an off-canvas overlay, so don't reserve a
+  column for it — collapse to a single track and let the chat fill the full
+  width. This block MUST come after the base rules above: media queries do not
+  add specificity, so a same-specificity base rule placed later would otherwise
+  win and leak the desktop two-column layout onto mobile.
+*/
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mainPanel {
+    grid-column: auto;
+  }
+}
