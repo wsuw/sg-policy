@@ -18,10 +18,11 @@
 
 ## ✨ 核心特性
 
-- ⚡ **RAG 语义检索增强**：采用轻量级中间件架构在 Agent 执行前自动检索 RAGFlow 知识库，智能注入精准事实上下文。
-- 📌 **精准切片角标引用 (`[Fig. n]`)**：大模型在生成答案时规范标注切片来源，鼠标悬浮即可即时弹出切片原文、匹配置信度及所属文件。
-- 📄 **原生物档在线预览与下载**：回答末尾自动聚合展示当前消息实际引用的参考文件胶囊，支持 DOCX、XLSX、PDF 等格式的在线极速原样预览及源文件下载。
-- 🎨 **A2UI 动态生成式画板**：支持由大模型驱动动态生成电价结构图表、数字化项目预算表及政策全景看板。
+- ⚡ **RAG 语义检索增强**：采用轻量级中间件架构（`RAGIntentMiddleware`）在 Agent 执行前自动检索 RAGFlow 知识库，智能注入精准事实上下文，问答响应缩短至 3~5 秒。
+- 📌 **精准切片角标引用 (`Fig. n`)**：大模型在生成答案时规范标注切片来源，鼠标悬浮即可弹出切片原文、匹配置信度及所属文件。无切片时前端严密防呆，杜绝虚假加载。
+- ⚖️ **新旧政策 1 对 1 智能比对工作台**：智能识别同主题政策的历史演进与更替（如北京市单一电价 vs 阶梯电价、新旧供电营业规则），自动驱动前端打开比对工作台，呈现维度拆解、变动类型（重大调整/新增机制/废止取消）及 1 对 1 原文条目对照。
+- 📄 **原生物档在线预览与下载**：回答底部自动聚合展示当前消息实际引用的参考文件胶囊，点击条款或文件胶囊即可在浏览器端利用 `file-viewer` 纯前端无损预览 Word（DOCX）、Excel（XLSX）、PDF 原文。
+- 🎨 **三模态自适应工作台**：支持“智能对话模式”、“政策沙盘模式（A2UI 动态看板）”与“政策比对模式”的丝滑切换与自适应双栏布局。
 - 🔄 **隔离式 AgentState 状态流**：后端将检索到的切片和聚合文档按每轮对话 ID 隔离存入 `AgentState.rag_citations`，确保多轮会话精准回溯、互不干扰。
 
 ---
@@ -172,27 +173,37 @@ npm run dev:ui
 ```
 sg-policy/
 ├── agent/                         # LangGraph Python 后端 Agent
-│   ├── main.py                    # Agent 核心图装配、模型与系统提示词
+│   ├── main.py                    # Agent 核心图装配、提示词与 comparePolicies 规则
 │   ├── src/
-│   │   ├── rag_middleware.py      # RAGFlow 前置切片检索与状态注入中间件
-│   │   ├── ragflow_tool.py        # RAGFlow API 客户端与数学计算工具
+│   │   ├── rag_middleware.py      # RAGFlow 前置切片检索、动态演变提示与状态注入中间件
+│   │   ├── ragflow_tool.py        # RAGFlow API 客户端（自适应 Top-K 与清洗）
 │   │   ├── todos.py               # AgentState 定义（包含 rag_citations）
 │   │   └── a2ui_dynamic_schema.py # A2UI 动态生成式 UI 生成器
 │   └── pyproject.toml             # Python 依赖配置
 │
+├── crawler/                       # 95598 电网政策通用爬虫与数据采集引擎
+│   ├── sgcc_95598_crawler.py      # 95598 信息公开目录自动化采集器
+│   └── data/documents/            # 政策源文件归档 (.docx, .pdf 等)
+│
 ├── src/                           # Next.js 16 前端应用
 │   ├── app/
-│   │   ├── page.tsx               # 主工作台页面
+│   │   ├── page.tsx               # 主工作台页面（三模态调度）
 │   │   └── api/
 │   │       ├── copilotkit/        # CopilotKit 运行时 API 路由
 │   │       └── documents/         # RAGFlow 原生物档下载与预览代理
 │   ├── components/
 │   │   ├── citation/              # 引用切片与文档预览组件体系
-│   │   │   ├── citation-assistant-message.tsx # 定制化消息与来源渲染
-│   │   │   ├── citation-badge.tsx             # [Fig. n] 悬浮切片卡片
+│   │   │   ├── citation-assistant-message.tsx # 定制化消息与来源渲染（防断行、防假标）
+│   │   │   ├── citation-badge.tsx             # Fig. n 悬浮切片卡片
 │   │   │   ├── document-pill.tsx              # 底部文档胶囊按钮
-│   │   │   └── file-previewer.tsx             # DOCX/XLSX/PDF 文件预览模态框
-│   │   └── example-canvas/        # 右侧政策库与数据看板画板
+│   │   │   └── file-previewer.tsx             # 纯前端 DOCX/XLSX/PDF 文件预览模态框
+│   │   ├── policy-comparison/     # 政策比对工作台组件体系
+│   │   │   ├── policy-comparator.tsx          # 1对1 条款对照面板与原文透传
+│   │   │   └── preset-data.ts                 # 政策比对数据结构与类型定义
+│   │   ├── example-canvas/        # 政策沙盘与 A2UI 动态看板
+│   │   └── example-layout/        # 三模态切换与自适应双栏布局
+│   ├── hooks/
+│   │   └── use-policy-comparison-tool.ts      # comparePolicies 前端驱动工具
 │   └── lib/
 │       └── citation-service.ts    # 客户端引用数据缓存与工具函数
 │

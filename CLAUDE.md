@@ -1,53 +1,55 @@
-# CopilotKit + LangGraph Todo Demo
+# 国网电策通 (SG-Policy Copilot)
 
 ## Purpose
 
-This repository serves as both a **showcase** and **template** for building AI agents with CopilotKit and LangGraph. It demonstrates how CopilotKit can drive interactive UI beyond just chat, using a **collaborative todo list** as the primary example.
+This repository is an enterprise AI decision sandbox and policy intelligence copilot built for the State Grid (SGCC), leveraging **CopilotKit v2**, **LangGraph Python Agent**, **RAGFlow Knowledge Base**, and **browser-native `file-viewer` rendering**.
 
-**Target audience:** Developers evaluating CopilotKit or starting new projects with AI agents.
-
-## Core Concept
-
-The todo list demonstrates **agent-driven UI** where:
-
-- The agent can manipulate application state (adding todos, updating status, organizing tasks)
-- Users can interact with the same state (editing titles, checking off tasks, deleting todos)
-- Both agent and user changes update the same shared state
-- The UI reactively updates based on agent state changes
-
-This uses CopilotKit's **v2 agent state pattern** where state lives in the agent and syncs to the frontend.
+It demonstrates:
+- Pre-retrieval RAG Intent Middleware with 3~5s end-to-end response time
+- Slice-level grounded citations (`Fig. n`) with rich popover cards
+- Pure frontend zero-conversion document previewing (Word, Excel, PDF)
+- Multi-period 1-on-1 policy comparison workspace (`comparePolicies`) driven by agent
+- Generative UI dashboards via A2UI protocol
 
 ## Architecture
 
-This is a **flat npm project** with a Next.js frontend at the root and a Python agent in `agent/`.
+This is a fullstack application with a Next.js 16 frontend and a LangGraph Python agent in `agent/`.
 
 ### Repository Structure
 
 ```
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx              # Main page - wires up all components
-│   │   └── api/copilotkit/       # CopilotKit API route
+│   │   ├── page.tsx               # Main workspace with 3 modes (Chat, Sandbox, Comparison)
+│   │   └── api/
+│   │       ├── copilotkit/        # CopilotKit v2 runtime route
+│   │       └── documents/         # RAGFlow raw binary document proxy
 │   ├── components/
-│   │   ├── canvas/               # Todo list UI
-│   │   │   ├── index.tsx         # Canvas container
-│   │   │   ├── todo-list.tsx     # Todo list with columns
-│   │   │   ├── todo-column.tsx   # Column (pending/completed)
-│   │   │   └── todo-card.tsx     # Individual todo card
-│   │   ├── example-layout/       # Layout: chat + canvas side-by-side
-│   │   └── generative-ui/        # Example generative UI components
-│   └── hooks/
-│       ├── use-generative-ui-examples.tsx  # Example CopilotKit patterns
-│       └── use-example-suggestions.tsx     # Chat suggestions
+│   │   ├── citation/              # Citation badges, pills, and file-viewer modal
+│   │   │   ├── citation-assistant-message.tsx
+│   │   │   ├── citation-badge.tsx # [Fig. n] hovercard
+│   │   │   ├── document-pill.tsx  # Source document chips
+│   │   │   └── file-previewer.tsx # Native client-side doc renderer
+│   │   ├── policy-comparison/     # Policy comparison workbench
+│   │   │   ├── policy-comparator.tsx # 1-to-1 clause comparator & preview modal
+│   │   │   └── preset-data.ts     # Schema definitions
+│   │   ├── example-canvas/        # A2UI sandbox canvas
+│   │   └── example-layout/        # Multi-mode layout (Chat / Sandbox / Compare)
+│   ├── hooks/
+│   │   └── use-policy-comparison-tool.ts # Frontend tool for comparePolicies
+│   └── lib/
+│       └── citation-service.ts    # Citation cache and resolution helpers
 ├── agent/                         # LangGraph Python agent
-│   ├── main.py                    # Agent entry point
+│   ├── main.py                    # Entry point, prompt rules & tool definitions
 │   └── src/
-│       ├── todos.py               # Todo tools and state schema
-│       └── query.py               # Example data query tool
-├── scripts/                       # Agent setup and run scripts
-│   ├── setup-agent.sh / .bat
-│   └── run-agent.sh / .bat
-├── package.json                   # Root project config (npm + concurrently)
+│       ├── rag_middleware.py      # Pre-retrieval RAG intent middleware
+│       ├── ragflow_tool.py        # RAGFlow API search client
+│       ├── todos.py               # AgentState schema (rag_citations)
+│       └── a2ui_dynamic_schema.py # A2UI generator
+├── crawler/                       # SGCC 95598 policy crawler engine
+│   ├── sgcc_95598_crawler.py
+│   └── data/documents/            # Downloaded policy documents
+├── package.json                   # Root scripts & dependencies
 └── next.config.ts
 ```
 
