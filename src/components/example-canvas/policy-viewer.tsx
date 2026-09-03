@@ -138,8 +138,8 @@ export function PolicyDocumentViewer() {
 
   return (
     <div className="h-full flex flex-col bg-stone-50/70 dark:bg-stone-950/80 border-l border-border select-none">
-      {/* Top Header */}
-      <div className="shrink-0 px-6 py-4 border-b border-border bg-card/60 backdrop-blur-md flex items-center justify-between gap-4">
+      {/* Top Header: 统一固定 h-[72px] */}
+      <div className="shrink-0 h-[72px] px-6 border-b border-border bg-card/60 backdrop-blur-md flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
             <FolderOpen className="w-4 h-4" />
@@ -151,9 +151,6 @@ export function PolicyDocumentViewer() {
                 {docList.length} 篇关联文档
               </span>
             </h3>
-            <p className="text-[11px] text-muted-foreground">
-              字字有据，行行可溯 · 原生零转化安全渲染
-            </p>
           </div>
         </div>
 

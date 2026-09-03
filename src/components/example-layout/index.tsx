@@ -8,15 +8,26 @@ import { useFrontendTool } from "@copilotkit/react-core/v2";
 interface ExampleLayoutProps {
   chatContent: ReactNode;
   appContent: ReactNode;
+  compareContent?: ReactNode;
+  mode?: "chat" | "app" | "compare";
+  onModeChange?: (mode: "chat" | "app" | "compare") => void;
 }
 
-export function ExampleLayout({ chatContent, appContent }: ExampleLayoutProps) {
-  const [mode, setMode] = useState<"chat" | "app">("chat");
+export function ExampleLayout({
+  chatContent,
+  appContent,
+  compareContent,
+  mode: controlledMode,
+  onModeChange: controlledOnModeChange,
+}: ExampleLayoutProps) {
+  const [internalMode, setInternalMode] = useState<"chat" | "app" | "compare">("chat");
+
+  const mode = controlledMode !== undefined ? controlledMode : internalMode;
+  const setMode = controlledOnModeChange || setInternalMode;
 
   useFrontendTool({
     name: "enableAppMode",
-    description:
-      "Enable app mode, make sure its open when interacting with todos.",
+    description: "仅在用户需要查看单一文档预览或普通文档库时调用。注意：如果是比对、比较新旧政策，严禁调用此工具，应调用 comparePolicies 工具！",
     handler: async () => {
       setMode("app");
     },
@@ -24,33 +35,32 @@ export function ExampleLayout({ chatContent, appContent }: ExampleLayoutProps) {
 
   useFrontendTool({
     name: "enableChatMode",
-    description: "Enable chat mode",
+    description: "切换至全屏智能对话模式。",
     handler: async () => {
       setMode("chat");
     },
   });
 
+  useFrontendTool({
+    name: "enableCompareMode",
+    description: "切换至新旧政策比对工作台模式。",
+    handler: async () => {
+      setMode("compare");
+    },
+  });
+
   return (
-    <div className="h-full flex flex-row pb-2">
+    <div className="h-full w-full flex flex-row overflow-hidden pb-2">
       <ModeToggle mode={mode} onModeChange={setMode} />
 
       {/* Chat Content */}
       <div
-        className={`h-full flex flex-col dark:bg-stone-950 ${
-          mode === "app"
-            ? "w-1/2 px-6 max-lg:hidden" // Half/half with the canvas; hidden on mobile in app mode
-            : "flex-1 max-lg:px-4"
+        className={`h-full flex flex-col dark:bg-stone-950 overflow-hidden ${
+          mode !== "chat"
+            ? "w-1/2 min-w-[360px] max-w-[50%] shrink-0 px-6 max-lg:hidden"
+            : "w-full flex-1 max-lg:px-4"
         }`}
       >
-        {/* Clear the threads drawer's floating launcher/collapsed cluster, which
-            is fixed at the top-left corner. Below 1024px (mobile off-canvas) that
-            is always present → max-lg:pl-24. On desktop it only appears when the
-            drawer is COLLAPSED — detected via --cpk-drawer-reserved-width, which
-            the drawer sets to 0px on collapse (else its 320px default): the pl
-            calc resolves to 1.5rem (pl-6) when expanded and ~6rem when collapsed,
-            so the logo never sits under the cluster. max-lg:pt-2.5 + pb-0
-            vertically center the logo with that launcher and the top-right
-            Chat/App toggle (both pinned at top-2). */}
         <div className="shrink-0 pt-[23px] px-6 pb-2 flex gap-3 items-center align-center border-b border-stone-200/50 dark:border-stone-800/60 pb-3.5 mb-1">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-xs font-bold text-sm tracking-wider">
             SG
@@ -92,10 +102,12 @@ export function ExampleLayout({ chatContent, appContent }: ExampleLayoutProps) {
         </div>
       </div>
 
-      {/* State Panel */}
-      {mode === "app" && (
-        <div className="h-full w-1/2 max-lg:w-full border-l border-[var(--border)] max-lg:border-l-0 overflow-hidden">
-          <div className="w-full h-full">{appContent}</div>
+      {/* State Panel (统一挂载单一右侧容器，避免两份并存竞争瞬时挤压) */}
+      {mode !== "chat" && (
+        <div className="h-full w-1/2 min-w-0 flex-1 max-lg:w-full border-l border-[var(--border)] max-lg:border-l-0 overflow-hidden">
+          <div className="w-full h-full">
+            {mode === "compare" ? compareContent : appContent}
+          </div>
         </div>
       )}
     </div>

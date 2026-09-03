@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
-import { getMessageCitationChunk, type CitationChunk } from "@/lib/citation-service";
+import React, { useMemo } from "react";
+import { useAgent } from "@copilotkit/react-core/v2";
+import { getMessageCitationChunk, type CitationChunk, type MessageRAGContext } from "@/lib/citation-service";
 import {
   HoverCard,
   HoverCardContent,
@@ -17,7 +18,30 @@ interface CitationBadgeProps {
 
 export function CitationBadge({ refId, messageId, initialChunk }: CitationBadgeProps) {
   const [open, setOpen] = React.useState(false);
-  const chunk = initialChunk || getMessageCitationChunk(refId, messageId);
+  const { agent } = useAgent();
+
+  // 动态且响应式地解析当前切片，优先从 agent.state.rag_citations 全局字典读取
+  const chunk = useMemo(() => {
+    if (initialChunk) return initialChunk;
+
+    const ragDict = (agent?.state as any)?.rag_citations;
+    if (ragDict && typeof ragDict === "object") {
+      const entries: [string, MessageRAGContext][] = Object.entries(ragDict);
+      // 1. 匹配对应 messageId
+      if (messageId && ragDict[messageId]?.chunks) {
+        const found = ragDict[messageId].chunks.find((c: any) => c.ref_id === refId);
+        if (found) return found;
+      }
+      // 2. 逆序遍历最近的 round
+      for (const [, ctx] of [...entries].reverse()) {
+        const found = ctx?.chunks?.find((c: any) => c.ref_id === refId);
+        if (found) return found;
+      }
+    }
+
+    // 3. 降级查本地 service 缓存
+    return getMessageCitationChunk(refId, messageId);
+  }, [agent?.state, refId, messageId, initialChunk]);
 
   const getDocIcon = (docName: string = "") => {
     const lower = docName.toLowerCase();

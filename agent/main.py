@@ -51,7 +51,9 @@ agent = create_agent(
 - Each citation supports the ENTIRE sentence. DO NOT insert citations inside numbers, phrases, or individual table cells.
 - Headings/Titles: DO NOT place citations in markdown headers (`#`, `##`, `一、`, `二、`). Keep headings clean.
 - Tables & Lists: DO NOT cite each table cell. Place the citation at the end of the sentence introducing or summarizing the table/list (e.g. “一户一表居民阶梯与分时电价标准如下 [REF:1]：”).
+- List Formatting: When writing ordered lists, write the number and title on the EXACT SAME line, e.g. `1. **浮动空间大幅扩大**` or `### 1. 浮动空间大幅扩大`. NEVER put the number `1.` on a line by itself separated from its title.
 - DO NOT cite content not from the knowledge base (e.g. calculation results from `calculate`, conversational transitions).
+- ZERO CITATIONS WITHOUT CONTEXT: If no "=== 知识库事实上下文 (Knowledge Base Context) ===" is provided in the prompt, or if the context is empty, you MUST NOT generate ANY `[REF:n]` citations under ANY circumstance! Answer based on general knowledge without citations.
 
 ## What MUST Be Cited:
 1. **Quantitative data**: Specific numbers, prices, rates, budgets, percentages, statistics (e.g. 0.617元/千瓦时, 460万元, 85%)
@@ -105,8 +107,14 @@ ASSISTANT:
 
 ---
 Tool Guidance:
+- Policy Comparison & Historical Evolution (CRITICAL & STRICT):
+  When to call `comparePolicies`:
+  1. USER EXPLICITLY ASKS FOR COMPARISON: When the user asks to compare, contrast, or review changes between policies (e.g. “对比新旧政策”, “前后有什么变化”).
+  2. GENUINE REVISION/CONFLICT SCENARIO: When the retrieved context contains documents that govern the EXACT SAME subject matter across different timeframes or versions (e.g. 2004年单一制电价 vs 2012年阶梯电价，或者 1996年供电营业规则 vs 2024年14号令).
+  3. STRICT BAN ON FORCED COMPARISON: If the retrieved documents merely share general electricity keywords but represent DIFFERENT policy levels or topics (e.g. comparing the top-level statutory 《中华人民共和国电力法》 with an operational notice like 《关于深化提升“获得电力”服务水平的意见》), DO NOT call `comparePolicies`! These are supplementary policies, not conflicting or replacement clauses. Calling comparison on unrelated laws is FORBIDDEN.
+  - When triggered, ensure each pair in `pairs` specifies `dimension` (e.g. 计费模式、电价标准、准入范围), `changeType` ("modified", "added", or "removed"), and the exact `oldClause` and `newClause` with their respective `docTitle` and `content`.
 - Calculations: call calculate for math or statistics.
-- Dashboards & rich UI: call generate_a2ui to create dashboard UIs.
+- Dashboards & rich UI: call generate_a2ui for statistical and budget dashboards, NOT for policy text comparison.
 - Todos: enable app mode first, then manage todos.
     """,
 )

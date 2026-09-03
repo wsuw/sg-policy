@@ -20,7 +20,11 @@ import {
 /**
  * 将包含 [REF:n] 和 [DOC:xxx] 的纯文本分割并替换为交互组件
  */
-function renderTextWithCitations(text: string, messageId?: string): React.ReactNode {
+function renderTextWithCitations(
+  text: string,
+  messageId?: string,
+  chunkMap?: Map<number, CitationChunk>
+): React.ReactNode {
   if (!text) return text;
 
   const pattern = /\[REF:(\d+)\]|\[DOC:([^\]]+)\]/g;
@@ -35,13 +39,18 @@ function renderTextWithCitations(text: string, messageId?: string): React.ReactN
 
     if (match[1] !== undefined) {
       const refId = parseInt(match[1], 10);
-      elements.push(
-        <CitationBadge
-          key={`ref-${refId}-${match.index}`}
-          refId={refId}
-          messageId={messageId}
-        />
-      );
+      const matchedChunk = chunkMap?.get(refId);
+      // 仅当知识库确实命中切片时才渲染 Fig 角标，若知识库未查出则不显示假角标
+      if (matchedChunk) {
+        elements.push(
+          <CitationBadge
+            key={`ref-${refId}-${match.index}`}
+            refId={refId}
+            messageId={messageId}
+            initialChunk={matchedChunk}
+          />
+        );
+      }
     } else if (match[2] !== undefined) {
       const docName = match[2].trim();
       elements.push(<DocumentPill key={`doc-${docName}-${match.index}`} docName={docName} />);
@@ -63,18 +72,19 @@ function renderTextWithCitations(text: string, messageId?: string): React.ReactN
 function transformCitationsInReactNode(
   node: React.ReactNode,
   messageId?: string,
+  chunkMap?: Map<number, CitationChunk>,
   keyPrefix = "c"
 ): React.ReactNode {
   if (typeof node === "string") {
     if (node.includes("[REF:") || node.includes("[DOC:")) {
-      return renderTextWithCitations(node, messageId);
+      return renderTextWithCitations(node, messageId, chunkMap);
     }
     return node;
   }
 
   if (Array.isArray(node)) {
     return node.map((child, i) =>
-      transformCitationsInReactNode(child, messageId, `${keyPrefix}-${i}`)
+      transformCitationsInReactNode(child, messageId, chunkMap, `${keyPrefix}-${i}`)
     );
   }
 
@@ -83,7 +93,7 @@ function transformCitationsInReactNode(
     if (props && props.children) {
       return React.cloneElement(node, {
         ...props,
-        children: transformCitationsInReactNode(props.children, messageId, `${keyPrefix}-child`),
+        children: transformCitationsInReactNode(props.children, messageId, chunkMap, `${keyPrefix}-child`),
       } as any);
     }
   }
@@ -164,68 +174,92 @@ function CitationMarkdownRenderer({
     return roundContext?.doc_aggs || (dictEntries.length > 0 ? dictEntries[dictEntries.length - 1][1]?.doc_aggs : []) || [];
   }, [text, agent?.state, messageId]);
 
+  // 构建可快速直达的切片 Map，确保第一轮首屏渲染即带真实切片数据
+  const chunkMap = useMemo(() => {
+    const map = new Map<number, CitationChunk>();
+    const ragDict = (agent?.state as any)?.rag_citations || {};
+    const dictEntries: [string, MessageRAGContext][] =
+      typeof ragDict === "object" ? Object.entries(ragDict) : [];
+
+    for (const [, ctx] of dictEntries) {
+      for (const chunk of ctx?.chunks || []) {
+        if (chunk && typeof chunk.ref_id === "number") {
+          map.set(chunk.ref_id, chunk);
+        }
+      }
+    }
+    return map;
+  }, [agent?.state]);
+
   const components = useMemo(() => ({
     p: ({ node, children, ...rest }: any) => (
       <p {...rest} className="my-3 leading-7">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </p>
     ),
     li: ({ node, children, ...rest }: any) => (
       <li {...rest} className="my-1.5 leading-7">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </li>
     ),
     h1: ({ node, children, ...rest }: any) => (
       <h1 {...rest} className="text-2xl font-bold mt-6 mb-3">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </h1>
     ),
     h2: ({ node, children, ...rest }: any) => (
       <h2 {...rest} className="text-xl font-bold mt-5 mb-2.5">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </h2>
     ),
     h3: ({ node, children, ...rest }: any) => (
       <h3 {...rest} className="text-lg font-bold mt-4 mb-2">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </h3>
     ),
     h4: ({ node, children, ...rest }: any) => (
       <h4 {...rest} className="text-base font-bold mt-3 mb-1.5">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </h4>
     ),
     strong: ({ node, children, ...rest }: any) => (
       <strong {...rest} className="font-semibold text-stone-900 dark:text-stone-100">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </strong>
     ),
     em: ({ node, children, ...rest }: any) => (
       <em {...rest} className="italic">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </em>
     ),
     td: ({ node, children, ...rest }: any) => (
       <td {...rest} className="px-3 py-2 text-sm border border-stone-200 dark:border-stone-800">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </td>
     ),
     th: ({ node, children, ...rest }: any) => (
       <th {...rest} className="px-3 py-2 text-sm font-semibold bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-800">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </th>
     ),
     blockquote: ({ node, children, ...rest }: any) => (
       <blockquote {...rest} className="border-l-4 border-blue-500/50 pl-4 my-3 italic text-stone-600 dark:text-stone-300">
-        {transformCitationsInReactNode(children, messageId)}
+        {transformCitationsInReactNode(children, messageId, chunkMap)}
       </blockquote>
     ),
-  }), [messageId]);
+  }), [messageId, chunkMap]);
+
+  // 预处理文本：修复大模型输出的 1.\n\n标题 这种松散列表，使其变回紧凑有序列表 1. **标题**
+  const cleanText = useMemo(() => {
+    if (!text) return "";
+    // 将类似 "\n1.\n\n浮动空间大幅扩大：" 规范化为 "\n1. **浮动空间大幅扩大：**"
+    return text.replace(/(\n\s*\d+\.)\s*\n+(\S[^\n]*)/g, "$1 $2");
+  }, [text]);
 
   return (
-    <div className={`prose dark:prose-invert max-w-none text-[15px] leading-7 text-stone-800 dark:text-stone-200 prose-a:no-underline ${className || ""}`}>
+    <div className={`prose dark:prose-invert max-w-none text-[15px] leading-7 text-stone-800 dark:text-stone-200 prose-a:no-underline prose-ol:pl-5 prose-ol:my-2 prose-li:my-1 ${className || ""}`}>
       <Streamdown components={components} {...props}>
-        {text}
+        {cleanText}
       </Streamdown>
 
       {/* 消息正文正下方无缝呈现参考来源文档列表 */}

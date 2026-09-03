@@ -93,7 +93,7 @@ def search_ragflow_api(
     question: str,
     dataset_ids: Optional[List[str]] = None,
     page: int = 1,
-    size: int = 4,
+    size: int = 8,
     highlight: bool = True,
     search_id: Optional[str] = None,
     tenant_id: Optional[str] = None,

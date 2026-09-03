@@ -37,15 +37,24 @@ def extract_original_user_topic(messages: List[Any]) -> str:
     return "新对话"
 
 
-def build_system_context_prompt(context_text: str) -> str:
+def build_system_context_prompt(context_text: str, doc_names: List[str] | None = None) -> str:
     """组装包含前置切片与引用规范的标准 SystemMessage"""
+    doc_count = len(doc_names) if doc_names else 1
+    evolution_hint = ""
+    if doc_count >= 2:
+        evolution_hint = f"""
+4. [政策比对判定指令]：本次检索命中了多个文件（{", ".join(doc_names or [])}）。
+   - 触发比对条件（必须同时满足）：仅当这些文档针对【同一具体业务事项】（如电价标准演进、营业规则修订、光伏准入变更），存在明确的【前后更替、新旧版本演进或机制改变】时，必须在回答的同时调用 `comparePolicies` 工具（例如《关于2004年度北京市居民生活用电价格调整情况的报告》与《关于2012年至今北京市居民阶梯电价政策执行情况的报告》正是典型的同一城市居民电价历史演进，必须触发 comparePolicies！）。
+   - 严禁强行比对：如果文档只是同属于电力领域但属于【完全不同的政策层级或不同事项】（例如上位法《电力法》与具体的《获得电力意见》并不存在直接条款修订替代关系），属于正常的政策协同，【严禁生拉硬拽进行对比】，切勿调用 `comparePolicies`！
+"""
+
     return f"""=== 知识库事实上下文 (Knowledge Base Context) ===
 {context_text}
 
 [重要引用指令]：
 1. 请严格根据上述知识库切片中的事实信息回答用户问题。
 2. 凡引用知识库事实的具体句子，请在句末规范标注 [REF:n]（例如 [REF:1]）。
-3. 标题、总结和非知识库内容切勿打标。
+3. 标题、总结和非知识库内容切勿打标。{evolution_hint}
 """
 
 
@@ -77,7 +86,7 @@ def _inject_context(
     doc_names = list({r.get("doc_name", "未知") for r in refs})
     print(f"✅ RAGFlow 检索成功! 命中切片: {len(refs)} 条 | 来源文档: {doc_names}")
 
-    system_context = build_system_context_prompt(context_text)
+    system_context = build_system_context_prompt(context_text, doc_names)
 
     # 检查是否已存在 RAG SystemMessage，有则复用 ID 覆盖更新（避免 messages 重复追加）
     existing_index = -1

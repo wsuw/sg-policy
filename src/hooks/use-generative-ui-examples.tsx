@@ -59,6 +59,10 @@ export const useGenerativeUIExamples = () => {
     "render_a2ui", // Rendered by A2UI streaming, not as a tool card
     "generate_a2ui", // Legacy: rendered by A2UI, not as a tool card
     "log_a2ui_event", // Internal A2UI event tracker
+    "comparePolicies", // Directly drives the right-hand comparison panel
+    "enableAppMode",
+    "enableChatMode",
+    "enableCompareMode",
   ];
   useDefaultRenderTool({
     render: ({ name, status, parameters }) => {
